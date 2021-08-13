@@ -2,7 +2,7 @@ ciudades <- read.csv("ciudades.csv")
 library(ggplot2)
 library(dplyr)
 
-## it would be better nice to do this with the normalized currency
+## it would be better to do this with the normalized currency
 ciudadesitpc <- select(ciudades, ciudad1, pais_c, ing_hogar,itpc)
 ciudadesitpc$ciudad1 = as.factor(ciudadesitpc$ciudad1)
 
