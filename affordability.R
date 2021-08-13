@@ -27,6 +27,7 @@ library(writexl)
 
 ##Create income
 load(file="merged2.rda")
+
 DF$ylm_ci<-ifelse(is.na(DF$ylm_ci),0,DF$ylm_ci)
 DF$ylnm_ci<-ifelse(is.na(DF$ylnm_ci),0,DF$ylnm_ci)
 DF$ynlm_ci<-ifelse(is.na(DF$ynlm_ci),0,DF$ynlm_ci)
@@ -94,14 +95,14 @@ rm(jefecol,colombia)
 
 
 
-
+load("jefesmergedclean.rda")
 ##This merges to original jefes
 jefe1<-merge(jefemex1,jefes,by=c("pais_c","idh_ch"), all=TRUE)
-rm(jefemex1)
+##rm(jefemex1)
 jefe2<-merge(jefecol1,jefe1,by=c("pais_c","idh_ch"), all=TRUE)
 
 jefe<-merge(jefebra1,jefe2,by=c("pais_c","idh_ch"), all=TRUE)
-rm(jefebra1)
+##rm(jefebra1)
 
 table(jefebra1$region_c)
 table(jefe$pais_c,jefe$ubica_geo)
@@ -133,6 +134,7 @@ table(jefe$ciudad1)
 ##Filter cities
 ciudades <- jefe %>%
   filter(ciudad1!=0)
+write.csv(ciudades,"ciudades.csv")
 ##This part of code was an attempt to get the tariffds in R 
 #tarifa<-as.data.frame(fread("income.csv"))
 #ciudadtarifa<- merge(ciudades,tarifa,by="ciudad1", all=TRUE)
