@@ -5,8 +5,6 @@
 ## Modified August 2021
 
 rm(list=ls())
-getwd()
-install.packages(git)
 library(foreign)
 library(dplyr)
 library(tidyverse)
@@ -49,7 +47,6 @@ DF$ing<- DF$ylm_ci+DF$ylnm_ci+DF$ynlm_ci+DF$ynlnm_ci
 ###Replace household fatcors with individual ones, as they are same it is just depends on base
 
 DF$factor_ch <- ifelse(is.na(DF$factor_ch), DF$factor_ci, DF$factor_ch)
-detach("package:plyr")
 ###create household income
 ingreso<- DF %>%
   group_by(pais_c,idh_ch,nmiembros_ch,zona_c,region_c,factor_ch) %>%
@@ -87,34 +84,52 @@ myvars<- c("idh_ch","rm_ride","pais_c")
 jefebra1<-jefebra[myvars]
 rm(jefebra,brasil)
 
+colombia<-read_dta("COL_2018t3_BID.dta")
+jefecol<- colombia %>%
+  filter(jefe_ci==1)
+myvars<- c("idh_ch","area","pais_c")
+jefecol1<-jefecol[myvars]
+rm(jefecol,colombia)
+
+
+
+
 
 ##This merges to original jefes
 jefe1<-merge(jefemex1,jefes,by=c("pais_c","idh_ch"), all=TRUE)
 rm(jefemex1)
-jefe<-merge(jefebra1,jefe1,by=c("pais_c","idh_ch"), all=TRUE)
+jefe2<-merge(jefecol1,jefe1,by=c("pais_c","idh_ch"), all=TRUE)
+
+jefe<-merge(jefebra1,jefe2,by=c("pais_c","idh_ch"), all=TRUE)
 rm(jefebra1)
 
 table(jefebra1$region_c)
-table(jefe$pais_c)
+table(jefe$pais_c,jefe$ubica_geo)
 ##This creates a list of important cities
 jefe$ciudad1 <- ifelse(jefe$region_c==53,"Brasilia",
-                      ifelse(jefe$pais_c=="BRA" & jefe$rm_ride==33,"Sao Paulo",
-                          ifelse(jefe$pais_c=="BOL" & jefe$zona_c==1 & jefe$region_c==2,"La Paz", 
-                                        ifelse(jefe$pais_c=="CHL" & jefe$region_c==13,"Santiago",
-                                               ifelse(jefe$pais_c=="CHL" & jefe$region_c==2 & jefe$zona_c==1,"Antofagasta",
-                                                      ifelse(jefe$pais_c=="CHL" & jefe$region_c==4 & jefe$zona_c==1,"La Serena",
-                                                             ifelse(jefe$pais_c=="COL" & jefe$region_c==11,"Bogota",
-                                                                    ifelse(jefe$pais_c=="CRI" & jefe$region_c==1 & jefe$zona_c==1,"San Jose",
-                                                                           ifelse(jefe$pais_c=="ECU" & jefe$region_c==17 & jefe$zona_c==1, "Quito",
-                                                                           ifelse(jefe$pais_c=="HND" & jefe$region_c==8 & jefe$zona_c==1,"Tegucigalpa",
-                                                                                  ifelse(jefe$pais_c=="MEX" & jefe$region_c==9,"CDMX",
-                                                                                         ifelse(jefe$pais_c=="MEX" & jefe$ubica_geo==15033,"Ecatepec",
-                                                                                                ifelse(jefe$pais_c=="MEX" & jefe$ubica_geo==15013,"Atizapán de Zaragoza",
-                                                                                                ifelse(jefe$pais_c=="PAN" & jefe$region_c==8 & jefe$zona_c==1,"Panama",
-                                                                                                       ifelse(jefe$pais_c=="PER" & jefe$region_c%in%c(15,7) & jefe$zona_c==1,"Lima",
-                                                                                                             ifelse(jefe$pais_c=="PRY" & jefe$region_c==1, "Asuncion",
-                                                                                                                    ifelse(jefe$pais_c=="URY" & jefe$region_c==1, "Montevideo",0)))))))))))))))))
+                ifelse(jefe$pais_c=="BRA" & jefe$rm_ride==35,"Sao Paulo",
+                       ifelse(jefe$pais_c=="BRA" & jefe$rm_ride==33,"Rio de Janeiro",
+                 ifelse(jefe$pais_c=="BOL" & jefe$zona_c==1 & jefe$region_c==2,"La Paz", 
+                 ifelse(jefe$pais_c=="CHL" & jefe$region_c==13,"Santiago",
+                 ifelse(jefe$pais_c=="CHL" & jefe$region_c==2 & jefe$zona_c==1,"Antofagasta",
+                  ifelse(jefe$pais_c=="CHL" & jefe$region_c==4 & jefe$zona_c==1,"La Serena",
+                  ifelse(jefe$pais_c=="COL" & jefe$region_c==11,"Bogota",
+                  ifelse(jefe$pais_c=="COL" & jefe$area==05,"Medellin",
+                  ifelse(jefe$pais_c=="COL" & jefe$area==76,"Cali",
+                  ifelse(jefe$pais_c=="CRI" & jefe$region_c==1 & jefe$zona_c==1,"San Jose",
+                  ifelse(jefe$pais_c=="ECU" & jefe$region_c==17 & jefe$zona_c==1, "Quito",
+                 ifelse(jefe$pais_c=="HND" & jefe$region_c==8 & jefe$zona_c==1,"Tegucigalpa",
+                 ifelse(jefe$pais_c=="MEX" & jefe$region_c==9,"CDMX",
+                  ifelse(jefe$pais_c=="MEX" & jefe$ubica_geo==15033,"Ecatepec",
+                  ifelse(jefe$pais_c=="MEX" & jefe$ubica_geo==15013,"Atizapan de Zaragoza",
+                         ifelse(jefe$pais_c=="MEX" & jefe$ubica_geo==19039,"Monterrey",
+                                ifelse(jefe$pais_c=="MEX" & jefe$ubica_geo==14039,"Guadalajara",                         
+                  ifelse(jefe$pais_c=="PAN" & jefe$region_c==8 & jefe$zona_c==1,"Panama",
+                  ifelse(jefe$pais_c=="PER" & jefe$region_c%in%c(15,7) & jefe$zona_c==1,"Lima",
+                  ifelse(jefe$pais_c=="PRY" & jefe$region_c==1, "Asuncion",
+                  ifelse(jefe$pais_c=="URY" & jefe$region_c==1, "Montevideo",0))))))))))))))))))))))
 
+table(jefe$ciudad1)
 ##Filter cities
 ciudades <- jefe %>%
   filter(ciudad1!=0)
@@ -147,7 +162,7 @@ median<-mutate_ntile(ciudades, "itpc", n=2, weights = "factor_ch", by = "ciudad1
                      check.na = FALSE)
 
 table(ciudades$ciudad)
-install.packages("dplyr") 
+
 
 library(dplyr)
 summaryquintil<-cities %>%
@@ -156,7 +171,7 @@ summaryquintil<-cities %>%
             ave_income_pcna=weighted.mean(itpc, factor_ch,na.rm=FALSE),
             medianincome=median(itpc,weights(factor_ch),na.rm=TRUE),
             homesize=weighted.mean(nmiembros_ch, factor_ch,na.rm=TRUE),
-            access=weighted.mean(pipedhouse, factor_ch,na.rm=TRUE), ###change to piped water to plot instead
+            access=weighted.mean(pipedprem, factor_ch,na.rm=TRUE), ###change to piped water to plot instead
             sewer=weighted.mean(sewer, factor_ch,na.rm=TRUE))
 
 summarymedianl<-median %>%
@@ -175,7 +190,7 @@ install.packages("dplyr")
 library(dplyr)
 library(tidyr)
 
-write.csv(citmerge,'ciudadesaffordability1.csv')
+write.csv(citmerge,'ciudadesaffordability8132021.csv')
 
 
                                                                                   
