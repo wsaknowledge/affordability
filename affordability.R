@@ -62,14 +62,9 @@ ingresoh<- ingreso%>%
   filter(jefe_ci)
 # cREATE quintiles
 
-
-
-
-
 ##This part adds specific information missing from DF dataset, especially for geographic information at the city level
 library(data.table)
 fread
-setwd("C:/Users/darciad/OneDrive - Inter-American Development Bank Group/Documents/HH/household")
 
 mexico<-read_dta("MEX_2018m8_m12_BID.dta")
 jefemex <- mexico %>%
@@ -100,12 +95,12 @@ load("jefesmergedclean.rda")
 jefe1<-merge(jefemex1,jefes,by=c("pais_c","idh_ch"), all=TRUE)
 ##rm(jefemex1)
 jefe2<-merge(jefecol1,jefe1,by=c("pais_c","idh_ch"), all=TRUE)
-
 jefe<-merge(jefebra1,jefe2,by=c("pais_c","idh_ch"), all=TRUE)
 ##rm(jefebra1)
-
+##testing results
 table(jefebra1$region_c)
 table(jefe$pais_c,jefe$ubica_geo)
+
 ##This creates a list of important cities
 jefe$ciudad1 <- ifelse(jefe$region_c==53,"Brasilia",
                 ifelse(jefe$pais_c=="BRA" & jefe$rm_ride==35,"Sao Paulo",
@@ -150,6 +145,107 @@ write.csv(ciudades,"ciudades.csv")
 #save(ciudades, file = "cities.Rda")
 #table(ciudades$ciudad1)
 
+## NORMALIZING INCOMES TO 2018 USD
+
+  #### pulling from world bank and IMF data in excel workbook and merging
+    install.packages("readxl")
+    library(readxl)
+    PPP<-read_excel("xchange.xls", sheet ="WB PPP 2018") ####this info is for 2018
+    LCU<-read_excel("xchange.xls", sheet ="WB DOLLAR LCU 2018") ####this info is for 2018
+    IMF<-read_excel("xchange.xls", sheet ="IMF xchange") ####this info is for 2018
+    
+    library(dplyr)
+    LCU <- rename(LCU, lcu2018 = `2018`)
+    PPP <- PPP %>% rename(ppp2018 = `2018`)
+    IMF <- IMF %>% rename(imf2018 = xchange)
+    
+  #### world bank data is missing information for LCU (USD conversion), references IMF data for missing information, bolivia comes from xc.com
+    xchangelcu<-merge(LCU, IMF, by="Country Code", all.x = TRUE)
+    xchangelcu$xr<-ifelse(is.na(xchangelcu$lcu2018),xchangelcu$imf2018, xchangelcu$lcu2018)
+    
+  #simplify dataframe with only necessary fields
+    xchangelcuimf <- xchangelcu[, c("Country Code", "lcu2018","imf2018", "xr")]
+    
+  
+  # pull inflation figures
+    infl<-read_excel("xchange.xls", sheet ="WB inflation")
+    infl <- rename(infl, infl_2019 = `2019`, infl_2017 = `2017` )
+  # simplify by only keeping necessary columns
+    inflation <- infl[, c("Country Code", "infl_2019","infl_2017")]
+  
+  
+  # deflate for 2019 data, inflate for 2017 data
+    xchange<- merge(PPP,xchangelcuimf, by="Country Code", all.x = TRUE)
+  
+    economicstats<-merge(xchange,inflation, by= "Country Code", all.x = TRUE)
+  
+    ciudades <- left_join(ciudades, economicstats, by = c("pais_c" = "Country Code"))
+  
+  ##2018 inflation
+    ciudades$year <-ifelse(ciudades$pais_c=="BRA",2019,
+                           ifelse(ciudades$pais_c %in% c("CHL","ECU","PRY"),2017,
+                                  ifelse(ciudades$pais_c=="JAM",2015,2018)))
+    
+    ciudades$infl_factor <-ifelse(ciudades$year=="2019",1/(1+ (ciudades$infl_2019/100)),
+                                  ifelse(ciudades$year=="2017",1+(ciudades$infl_2017/100),
+                                         1))
+      ## quick check / validation    
+        g <- ciudades$pais_c
+        z<- split(ciudades, g)
+        z$BRA
+        z$CHL
+        z$ECU
+        z$PRY
+    
+  ## multiply itpc and hhincome by inflation factor to get 2018 values
+  
+    ciudades$itpc_2018 <- ciudades$itpc*ciudades$infl_factor
+    ciudades$ing_hogar_2018 <- ciudades$ing_hogar*ciudades$infl_factor
+    
+  ## USD conversion
+    ciudades$itpc_usd_2018 <- ciudades$itpc_2018/ciudades$xr
+    ciudades$ing_hogar_usd_2018 <- ciudades$ing_hogar_2018/ciudades$xr
+min(ciudades$itpc_usd_2018)    
+
+   
+
+ ##Violin Plots
+    ##simplify dataframe for graphics
+    ciudades_simple <- ciudades[, c("pais_c","idh_ch", "ciudad1", "nmiembros_ch", "ing_hogar_usd_2018","itpc_usd_2018")]
+    ciudades_simple$ciudad1 <- as.factor(ciudades_simple$ciudad1)
+    
+    library(lattice)
+    options(scipen=5)
+    
+    itpcplot<- bwplot(ciudades_simple$itpc_usd_2018 ~ ciudades_simple$ciudad1, do.out = TRUE,
+                   xlab='City', ylab='Income per capita in USD 2018 equivalent',
+                   outer=TRUE, as.table=TRUE, horizontal=FALSE,
+                   col='cyan4',
+                   ylim=c(-20, 20000),
+                   ##panel=panel.violin, ## this changes it from a boxplot to a violin plot.
+                   par.settings = list(box.rectangle=list(col='black'),
+                                       plot.symbol = list(pch='.', cex = 0.1)),
+                   scales=list(x=list(rot=45, cex=0.5)))
+    library(ggplot2)
+    itpcplot2 <- ggplot(ciudades_simple, aes(x=ciudad1, y=itpc_usd_2018, color = pais_c)) + 
+                   ylim(0, 2000) +
+                   geom_violin(trim=FALSE, fill='lightgrey', color="cyan4")+
+                   geom_boxplot(width=0.1)+
+                   scale_x_discrete(guide = guide_axis(n.dodge = 2))+
+                   labs(title = "Income per capita in featured cities", x = "Cities", y = "Income per capita, USD 2018 equivalent", color = "Country")
+   
+        ##the y axis on the above violin plot is limited to 2k to see detail.
+    
+    
+    png("itpc_boxplot_plot.png", width = 1200, height = 600)
+    itpcplot
+    dev.off()
+    png("itpc_violin_plot.png", width = 1200, height = 600)
+    itpcplot2
+    dev.off()
+
+
+
 
 ##This creates income quintiles using hutils, factor_ch are weights, uses household per capita income
 install.packages("hutils")
@@ -164,6 +260,7 @@ median<-mutate_ntile(ciudades, "itpc", n=2, weights = "factor_ch", by = "ciudad1
                      check.na = FALSE)
 
 table(ciudades$ciudad)
+## add normalization stuff here
 
 
 library(dplyr)
